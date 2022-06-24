@@ -1,0 +1,245 @@
+C51 COMPILER V9.60.0.0   OLED                                                              06/24/2022 22:36:51 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE OLED
+OBJECT MODULE PLACED IN .\Objects\oled.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE oled.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\oled
+                    -.lst) TABS(2) OBJECT(.\Objects\oled.obj)
+
+line level    source
+
+   1          #include <STC8G.H>
+   2          #include "OLED_Font.h"
+   3          
+   4          #define uint8_t unsigned char 
+   5          #define uint16_t unsigned int
+   6          #define uint32_t unsigned long      
+   7            
+   8          //----------------------------------------------------------------
+   9          sbit OLED_SCL=P2^5;//SCL
+  10          sbit OLED_SDIN=P2^4;//SDA
+  11          //----------------------------------------------------------------
+  12          
+  13          
+  14          //开始
+  15          void IIC_Start()
+  16          {
+  17   1        OLED_SCL = 1;
+  18   1        OLED_SDIN = 1;
+  19   1        OLED_SDIN = 0;
+  20   1        OLED_SCL = 0;
+  21   1      }
+  22          
+  23          //停止
+  24          void IIC_Stop()
+  25          {
+  26   1        OLED_SCL = 1 ;
+  27   1        OLED_SDIN = 0;
+  28   1        OLED_SDIN = 1;
+  29   1      
+  30   1      }
+  31          
+  32          void IIC_Wait_Ack()
+  33          {
+  34   1        OLED_SCL = 1 ;
+  35   1        OLED_SCL = 0;
+  36   1      }
+  37          
+  38          //发送一个字节
+  39          void Write_IIC_Byte(uint8_t IIC_Byte)
+  40          {
+  41   1        uint8_t i;
+  42   1        uint8_t m, da;
+  43   1        da = IIC_Byte;
+  44   1        OLED_SCL = 0;
+  45   1        for(i = 0; i < 8; i++)
+  46   1        {
+  47   2          m = da;
+  48   2          m = m & 0x80;
+  49   2          if(m == 0x80)
+  50   2          {
+  51   3            OLED_SDIN = 1;
+  52   3          }
+  53   2          else OLED_SDIN = 0;
+  54   2          da = da << 1;
+C51 COMPILER V9.60.0.0   OLED                                                              06/24/2022 22:36:51 PAGE 2   
+
+  55   2          OLED_SCL = 1;
+  56   2          OLED_SCL = 0;
+  57   2        }
+  58   1      }
+  59          
+  60          //发送命令
+  61          void Write_IIC_Command(uint8_t IIC_Command)
+  62          {
+  63   1        IIC_Start();
+  64   1        Write_IIC_Byte(0x78);
+  65   1        IIC_Wait_Ack();
+  66   1        Write_IIC_Byte(0x00);
+  67   1        IIC_Wait_Ack();
+  68   1        Write_IIC_Byte(IIC_Command);
+  69   1        IIC_Wait_Ack();
+  70   1        IIC_Stop();
+  71   1      }
+  72          
+  73          //发送数据
+  74          void Write_IIC_Data(uint8_t IIC_Data)
+  75          {
+  76   1        IIC_Start();
+  77   1        Write_IIC_Byte(0x78);
+  78   1        IIC_Wait_Ack();
+  79   1        Write_IIC_Byte(0x40);
+  80   1        IIC_Wait_Ack();
+  81   1        Write_IIC_Byte(IIC_Data);
+  82   1        IIC_Wait_Ack();
+  83   1        IIC_Stop();
+  84   1      }
+  85          
+  86          //设置坐标
+  87          void OLED_Set_Pos(uint8_t Y, uint8_t X)
+  88          {
+  89   1        Write_IIC_Command(0xB0 | Y);
+  90   1        Write_IIC_Command(0x10 | ((X & 0xF0) >> 4));
+  91   1        Write_IIC_Command(0x00 | (X & 0x0F));
+  92   1      }
+  93          //清屏
+  94          void OLED_Clear()
+  95          {
+  96   1        uint8_t i, j;
+  97   1        for(i = 0; i < 8; i++)
+  98   1        {
+  99   2          OLED_Set_Pos(i,0);
+ 100   2          for(j = 0; j < 128; j++)
+ 101   2          {
+ 102   3            Write_IIC_Data(0x00);
+ 103   3          }
+ 104   2        }
+ 105   1      }
+ 106          //平方
+ 107          uint32_t OLED_Pow(uint32_t X, uint32_t Y)
+ 108          {
+ 109   1        uint32_t Result = 1;
+ 110   1        while (Y--)
+ 111   1        {
+ 112   2          Result *= X;
+ 113   2        }
+ 114   1        return Result;
+ 115   1      }
+ 116          
+C51 COMPILER V9.60.0.0   OLED                                                              06/24/2022 22:36:51 PAGE 3   
+
+ 117          // OLED显示字符
+ 118          void OLED_ShowChar(uint8_t Line, uint8_t Column, char Char)
+ 119          {
+ 120   1        uint8_t i;
+ 121   1        OLED_Set_Pos((Line - 1) * 2, (Column - 1) * 8);
+ 122   1        for (i = 0; i < 8; i++)
+ 123   1        {
+ 124   2          Write_IIC_Data(F8x16[Char - ' '][i]);
+ 125   2        }
+ 126   1        OLED_Set_Pos((Line - 1) * 2 + 1, (Column - 1) * 8);
+ 127   1        for (i = 0; i < 8; i++)
+ 128   1        {
+ 129   2          Write_IIC_Data(F8x16[Char - ' '][i + 8]);
+ 130   2        }
+ 131   1      }
+ 132          
+ 133          // OLED显示字符串
+ 134          void OLED_ShowString(uint8_t Line, uint8_t Column, char *String)
+ 135          {
+ 136   1        uint8_t i;
+ 137   1        for (i = 0; String[i] != '\0'; i++)
+ 138   1        {
+ 139   2          OLED_ShowChar(Line, Column + i, String[i]);
+ 140   2        }
+ 141   1      }
+ 142          // OLED显示数字
+ 143          void OLED_ShowNum(uint8_t Line, uint8_t Column, uint32_t Number, uint8_t Length)
+ 144          {
+ 145   1        uint8_t i;
+ 146   1        for (i = 0; i < Length; i++)              
+ 147   1        {
+ 148   2          OLED_ShowChar(Line, Column + i, Number / OLED_Pow(10, Length - i - 1) % 10 + '0');
+ 149   2        }
+ 150   1      }
+ 151          
+ 152          //OLED显示数字（十进制，带符号数）
+ 153          void OLED_ShowSignedNum(uint8_t Line, uint8_t Column, uint32_t Number, uint8_t Length)
+ 154          {
+ 155   1        uint8_t i;
+ 156   1        uint32_t Number1;
+ 157   1        if (Number >= 0)
+ 158   1        {
+ 159   2          OLED_ShowChar(Line, Column, '+');
+ 160   2          Number1 = Number;
+ 161   2        }
+ 162   1        else
+ 163   1        {
+ 164   2          OLED_ShowChar(Line, Column, '-');
+ 165   2          Number1 = -Number;
+ 166   2        }
+ 167   1        for (i = 0; i < Length; i++)              
+ 168   1        {
+ 169   2          OLED_ShowChar(Line, Column + i + 1, Number1 / OLED_Pow(10, Length - i - 1) % 10 + '0');
+ 170   2        }
+ 171   1      }
+ 172          
+ 173          //OLED显示数字（十六进制，正数）
+ 174          void OLED_ShowHexNum(uint8_t Line, uint8_t Column, uint32_t Number, uint8_t Length)
+ 175          {
+ 176   1        uint8_t i, SingleNumber;
+ 177   1        for (i = 0; i < Length; i++)              
+ 178   1        {
+C51 COMPILER V9.60.0.0   OLED                                                              06/24/2022 22:36:51 PAGE 4   
+
+ 179   2          SingleNumber = Number / OLED_Pow(16, Length - i - 1) % 16;
+ 180   2          if (SingleNumber < 10)
+ 181   2          {
+ 182   3            OLED_ShowChar(Line, Column + i, SingleNumber + '0');
+ 183   3          }
+ 184   2          else
+ 185   2          {
+ 186   3            OLED_ShowChar(Line, Column + i, SingleNumber - 10 + 'A');
+ 187   3          }
+ 188   2        }
+ 189   1      }
+ 190          //OLED显示数字（二进制，正数）
+ 191          void OLED_ShowBinNum(uint8_t Line, uint8_t Column, uint32_t Number, uint8_t Length)
+ 192          {
+ 193   1        uint8_t i;
+ 194   1        for (i = 0; i < Length; i++)              
+ 195   1        {
+ 196   2          OLED_ShowChar(Line, Column + i, Number / OLED_Pow(2, Length - i - 1) % 2 + '0');
+ 197   2        }
+ 198   1      }
+ 199          
+ 200          
+ 201          //void OLED_Init(void)
+ 202          void OLED_Init()
+ 203          {
+ 204   1        Write_IIC_Command(0xAE); //--display off
+ 205   1        Write_IIC_Command(0x00); //---set low column address
+ 206   1        Write_IIC_Command(0x10); //---set high column address
+ 207   1        Write_IIC_Command(0x40); //--set start line address
+ 208   1        Write_IIC_Command(0xB0); //--set page address
+ 209   1        Write_IIC_Command(0x81); // contract control
+ 210   1        Write_IIC_Command(0xFF); //--128
+ 211   1        Write_IIC_Command(0xA1); //set segment remap
+ 212   1        Write_IIC_Command(0xA6); //--normal / reverse
+ 213   1        Write_IIC_Command(0xA8); //--set multiplex ratio(1 to 64)
+ 214   1        Write_IIC_Command(0x3F); //--1/32 duty
+ 215   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    924    ----
+   CONSTANT SIZE    =   1520    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      56
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
